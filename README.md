@@ -25,14 +25,20 @@ npm run start
 
 step4 :
 
-```bash
+```new bash
 cd backend
 ```
 
 step3 :
 
-```bash
+```new bash
 pip install -r requirements.tx
+```
+
+step3 :
+
+```new bash
+python app.py
 ```
 
 Enjoy 😚✨
