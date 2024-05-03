@@ -1,7 +1,7 @@
 ## AttorneyWise
 
 ### What Is This Project
-A simple web app developed by react with green theme.
+A simple web app developed by react with react chatengine.
 
 ## How Start Project In Local
 
