@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PrettyChatWindow } from "react-chat-engine-pretty";
+import axios from "axios";
 
 // Modal component
 const Modal: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({
@@ -56,30 +57,30 @@ const Modal: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({
 // DocumentSubmissionForm component
 const DocumentSubmissionForm: React.FC<{
   option: string;
-  onSubmit: (text: string) => void;
+  onSubmit: (file: File) => void;
 }> = ({ option, onSubmit }) => {
-  const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setFile(event.target.files[0]);
+    }
+  };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSubmit(text);
+    if (file) {
+      onSubmit(file);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Enter text here..."
-        style={{
-          width: "100%",
-          height: "100px",
-          padding: "10px",
-          borderRadius: "5px",
-          border: "1px solid #ccc",
-          marginBottom: "10px",
-          resize: "vertical",
-        }}
+      <input
+        type="file"
+        onChange={handleFileChange}
+        accept=".txt, .pdf, .doc, .docx"
+        style={{ marginBottom: "10px" }}
       />
       <button
         type="submit"
@@ -105,12 +106,14 @@ const ChatsPage: React.FC = () => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [selectedOption, setSelectedOption] = useState("");
-  const [modalOptions, setModalOptions] = useState([
+  const [modalOptions, setModalOptions] = useState<string[]>([
     "Summarise Document",
     "Generate Reply",
+    "Read Summary",
   ]);
   const [summaryOrReply, setSummaryOrReply] = useState("");
   const [loading, setLoading] = useState(true); // State to manage loading delay
+  const [typedText, setTypedText] = useState(""); // State for typed text
 
   useEffect(() => {
     const username = sessionStorage.getItem("username");
@@ -145,32 +148,34 @@ const ChatsPage: React.FC = () => {
     setShowModal(false);
   };
 
-  const handleTextSubmit = async (text: string) => {
+  const handleFileSubmit = async (file: File) => {
     try {
-      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/models/*:generateMessage", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer AIzaSyAvpMZOGSZD5bMQcl2W64Z5GAQvZXbY6wk`, // Use your API key here
-        },
-        body: JSON.stringify({ text }), // Adjust parameters as needed
-      });
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Summary:", data.summary);
-        setSummaryOrReply(data.summary); // Set summary state
-        setShowModal(true); // Show modal with summary
-      } else {
-        console.error("Failed to summarize text:", response.statusText);
-      }
+      // Implement file processing logic here
+      console.log("File submitted:", file);
+      // Simulated response
+      const summary = "This is a summary of the document.";
+      setSummaryOrReply(summary);
+      setShowModal(true);
     } catch (error) {
-      console.error("Error occurred while summarizing text:", error);
+      console.error("Error occurred while processing file:", error);
     }
   };
-  
-  
-  
-  
+
+  const handleReadSummary = async () => {
+    try {
+      const response = await axios.post(
+        "http://127.0.0.1:5000/api/tts",
+        { text: summaryOrReply },
+        { responseType: "blob" }
+      );
+      const blob = new Blob([response.data], { type: "audio/mpeg" });
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      audio.play();
+    } catch (error) {
+      console.error("Error occurred while converting text to speech:", error);
+    }
+  };
 
   const defaultProjectId = "eb2c19bc-78f3-44fa-b829-14b962eb42fc";
 
@@ -285,15 +290,45 @@ const ChatsPage: React.FC = () => {
           style={{ height: "calc(100vh - 50px)" }}
         />
       )}
-      {/* Modal for text submission */}
+      {/* Modal for file submission */}
       {showModal && (
         <Modal onClose={handleModalClose}>
           <div style={{ textAlign: "center" }}>
             <h2>{selectedOption}</h2>
-            <DocumentSubmissionForm
-              option={selectedOption}
-              onSubmit={(text) => handleTextSubmit(text)}
-            />
+            {selectedOption === "Summarise Document" && (
+              <DocumentSubmissionForm
+                option={selectedOption}
+                onSubmit={(file) => handleFileSubmit(file)}
+              />
+            )}
+            {selectedOption === "Read Summary" && (
+              <>
+                <input
+                  type="text"
+                  value={typedText}
+                  onChange={(e) => setTypedText(e.target.value)}
+                  placeholder="Type text here..."
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "5px",
+                    border: "1px solid #ccc",
+                    marginBottom: "10px",
+                  }}
+                />
+                <p>{summaryOrReply}</p>
+                <button onClick={handleReadSummary}>
+                  <span
+                    role="img"
+                    aria-label="Speaker"
+                    style={{ marginRight: "5px" }}
+                  >
+                    🔊
+                  </span>
+                  Play Summary
+                </button>
+              </>
+            )}
             <span
               className="close"
               onClick={handleModalClose}
