@@ -11,6 +11,8 @@ import requests
 from dotenv import load_dotenv
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import openai
+from gtts import gTTS
+from io import BytesIO
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
@@ -285,6 +287,27 @@ def generate_reply():
     )
     reply = response.choices[0].text.strip()
     return jsonify({'reply': reply})
+
+@app.route('/api/tts', methods=['POST'])
+def text_to_speech():
+    try:
+        data = request.get_json()
+        if not data or 'text' not in data:
+            return jsonify({'error': 'Text data not provided'}), 400
+
+        # Get the text from the request data
+        text = data['text']
+
+        # Convert text to speech using gTTS
+        tts = gTTS(text=text, lang='en')
+        audio_bytes = BytesIO()
+        tts.write_to_fp(audio_bytes)
+
+        return audio_bytes.getvalue(), 200, {'Content-Type': 'audio/mpeg'}
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
